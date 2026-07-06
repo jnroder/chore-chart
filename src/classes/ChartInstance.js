@@ -11,6 +11,7 @@ export class ChartInstance {
     templateId,
     name = "Untitled chart",
     heading = "",
+    pointsLabel = "Chore Points:",
     days = [],
     times = [],
     chores = [],
@@ -22,6 +23,7 @@ export class ChartInstance {
     this.templateId = templateId || "";
     this.name = name;
     this.heading = heading;
+    this.pointsLabel = pointsLabel;
     this.days = days.map((d) => ({ ...d }));
     this.times = times.map((t) => ({ ...t }));
     this.chores = chores.map((c) => (c instanceof Chore ? c : new Chore(c)));
@@ -35,6 +37,7 @@ export class ChartInstance {
       templateId: this.templateId,
       name: this.name,
       heading: this.heading,
+      pointsLabel: this.pointsLabel,
       days: this.days.map((d) => ({ ...d })),
       times: this.times.map((t) => ({ ...t })),
       chores: this.chores.map((c) => c.toJSON()),
@@ -54,6 +57,7 @@ export class ChartInstance {
       templateId: template.id,
       name: name || `${template.name} chart`,
       heading: defaults.heading || template.name || "",
+      pointsLabel: defaults.pointsLabel || "Chore Points:",
       days: (defaults.days || []).map((d) => ({ ...d, id: newId() })),
       times: (defaults.times || []).map((t) => ({ ...t, id: newId() })),
       chores: (defaults.chores || []).map(

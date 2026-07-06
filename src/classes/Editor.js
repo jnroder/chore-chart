@@ -260,6 +260,14 @@ export class Editor {
       return;
     }
 
+    // Click directly on the multiplier number: start inline text edit.
+    // Must be checked BEFORE the day-cell cycle handler below.
+    const multVal = e.target.closest('[data-edit="multiplier"]');
+    if (multVal) {
+      this._startInlineEdit(multVal);
+      return;
+    }
+
     const dayCell = e.target.closest('[data-edit="day-cell"]');
     if (dayCell) {
       this._toggleDayCell(dayCell, e.shiftKey);
@@ -276,10 +284,12 @@ export class Editor {
   _isTextEditable(kind) {
     return (
       kind === "heading" ||
+      kind === "points-label" ||
       kind === "day-label" ||
       kind === "time-label" ||
       kind === "chore-name" ||
-      kind === "chore-points"
+      kind === "chore-points" ||
+      kind === "multiplier"
     );
   }
 
@@ -351,6 +361,35 @@ export class Editor {
       this._commit("heading");
       return;
     }
+    if (kind === "points-label") {
+      this.instance.pointsLabel = raw || "Chore Points:";
+      this._commit("points-label");
+      return;
+    }
+    if (kind === "multiplier") {
+      const choreId = el.dataset.choreId;
+      const dayLabel = el.dataset.dayLabel;
+      const chore = this.instance.chores.find((c) => c.id === choreId);
+      if (!chore) {
+        if (!this._skipRender) this.render();
+        return;
+      }
+      // Accept "3" or "x3"; blank clears the multiplier (cell stays scheduled).
+      const stripped = raw.replace(/^x/i, "").trim();
+      if (stripped === "") {
+        delete chore.multipliers[dayLabel];
+        this._commit("multiplier");
+        return;
+      }
+      const n = parseInt(stripped, 10);
+      if (Number.isFinite(n) && n >= 1) {
+        chore.multipliers[dayLabel] = n;
+        this._commit("multiplier");
+      } else if (!this._skipRender) {
+        this.render();
+      }
+      return;
+    }
     if (kind === "day-label") {
       const id = el.dataset.dayId;
       const day = this.instance.days.find((d) => d.id === id);
@@ -408,47 +447,39 @@ export class Editor {
     if (!this._skipRender) this.render();
   }
 
-  _toggleDayCell(cell, shift) {
+  _toggleDayCell(cell, _shift) {
     const choreId = cell.dataset.choreId;
     const dayLabel = cell.dataset.dayLabel;
     const chore = this.instance.chores.find((c) => c.id === choreId);
     if (!chore) return;
 
-    if (shift && this.editability.chore?.multipliers) {
-      // Ensure it's scheduled; then prompt for multiplier
-      if (!chore.days.includes(dayLabel)) chore.days.push(dayLabel);
-      const current = chore.multipliers[dayLabel] || "";
-      const input = prompt(
-        `Multiplier for ${dayLabel} (blank to clear):`,
-        current,
-      );
-      if (input === null) {
-        this.render();
-        return;
-      }
-      if (input.trim() === "") {
+    const canDays = !!this.editability.chore?.days;
+    const canMult = !!this.editability.chore?.multipliers;
+    if (!canDays && !canMult) return;
+
+    const scheduled = chore.days.includes(dayLabel);
+    const hasMult = !!chore.multipliers[dayLabel];
+
+    if (canDays && canMult) {
+      // 3-state cycle: scheduled(empty) → multiplier(x2) → blocked → scheduled
+      if (scheduled && !hasMult) {
+        chore.multipliers[dayLabel] = 2;
+      } else if (scheduled && hasMult) {
         delete chore.multipliers[dayLabel];
+        chore.days = chore.days.filter((d) => d !== dayLabel);
       } else {
-        const n = parseInt(input, 10);
-        if (!Number.isFinite(n) || n < 1) {
-          alert("Multiplier must be a positive integer.");
-          this.render();
-          return;
-        }
-        chore.multipliers[dayLabel] = n;
+        chore.days.push(dayLabel);
       }
-      this._commit("multiplier");
-      return;
-    }
-
-    if (!this.editability.chore?.days) return;
-
-    // Cycle: scheduled -> blocked -> scheduled
-    if (chore.days.includes(dayLabel)) {
-      chore.days = chore.days.filter((d) => d !== dayLabel);
-      if (chore.multipliers[dayLabel]) delete chore.multipliers[dayLabel];
+    } else if (canDays) {
+      // 2-state cycle: scheduled ↔ blocked
+      if (scheduled) {
+        chore.days = chore.days.filter((d) => d !== dayLabel);
+        if (chore.multipliers[dayLabel]) delete chore.multipliers[dayLabel];
+      } else {
+        chore.days.push(dayLabel);
+      }
     } else {
-      chore.days.push(dayLabel);
+      return;
     }
     this._commit("day-toggle");
   }

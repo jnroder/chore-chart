@@ -47,6 +47,7 @@
 /**
  * @typedef {Object} Editability
  * @property {boolean} heading
+ * @property {boolean} pointsLabel      - can rename the "Chore Points:" label
  * @property {boolean} days             - can rename/hide days
  * @property {boolean} times            - can rename/add/remove time sections
  * @property {boolean} addRemoveChores
@@ -65,6 +66,7 @@
 
 export const ALL_EDITABLE = Object.freeze({
   heading: true,
+  pointsLabel: true,
   days: true,
   times: true,
   addRemoveChores: true,

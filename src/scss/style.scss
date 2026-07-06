@@ -108,11 +108,27 @@
 }
 
 .multiplier {
+  display: flex;
+  justify-content: center;
+  align-items: center;
   background: rgb(216, 229, 240);
   font-size: 2rem;
   font-weight: bold;
   text-align: center;
   color: white;
+
+  .multiplier-prefix,
+  .multiplier-value {
+    display: inline;
+  }
+  .multiplier-value.editable {
+    padding: 0 0.15em;
+    border-radius: 0.15em;
+  }
+  .multiplier-value[contenteditable="true"] {
+    color: #2b6cb0;
+    background: #fff;
+  }
 }
 
 .points-container {

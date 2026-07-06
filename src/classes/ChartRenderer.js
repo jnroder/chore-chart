@@ -42,8 +42,15 @@ export function renderChart(instance, options = {}) {
   html += `<div class="chart-content" style="${gridStyle}">`;
 
   // Points cell — sits in column 1, alongside the day headers to its right
+  const pointsLabel = instance.pointsLabel || "Chore Points:";
+  const labelEditable = editable && ed.pointsLabel;
   html += `<div class="points-container">
-        <span>Chore Points:</span> <div class="points-total"></div>
+        ${
+          labelEditable
+            ? `<span class="editable" data-edit="points-label">${esc(pointsLabel)}</span>`
+            : `<span>${esc(pointsLabel)}</span>`
+        }
+        <div class="points-total"></div>
     </div>`;
 
   // Day header row
@@ -163,7 +170,12 @@ function renderChoreRow(chore, dayLabels, editable, choreEd, ed) {
       cls = "filled";
     } else if (mult) {
       cls = "multiplier";
-      content = `x${esc(mult)}`;
+      // Split "x" prefix from the number so only the number is inline-editable.
+      const numHtml =
+        editable && choreEd.multipliers
+          ? `<span class="multiplier-value editable" data-edit="multiplier" data-chore-id="${esc(chore.id)}" data-day-label="${esc(label)}">${esc(mult)}</span>`
+          : `<span class="multiplier-value">${esc(mult)}</span>`;
+      content = `<span class="multiplier-prefix">x</span>${numHtml}`;
     } else {
       cls = "empty";
     }
@@ -171,7 +183,7 @@ function renderChoreRow(chore, dayLabels, editable, choreEd, ed) {
     html += `<div class="${cls}${cellEditable ? " cell-editable" : ""}"`;
     html += ` data-chore-id="${esc(chore.id)}" data-day-label="${esc(label)}"`;
     if (cellEditable) html += ` data-edit="day-cell"`;
-    html += ` title="${cellEditable ? "Click to toggle, Shift+click to set multiplier" : ""}">`;
+    html += ` title="${cellEditable ? "Click to cycle scheduled → multiplier → blocked. Click the number to edit it." : ""}">`;
     html += content;
     html += `</div>`;
   });
