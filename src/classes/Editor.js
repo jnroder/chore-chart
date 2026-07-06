@@ -87,6 +87,7 @@ export class Editor {
                 <button type="button" data-tb="undo" ${canUndo ? "" : "disabled"}>Undo</button>
                 <button type="button" data-tb="redo" ${canRedo ? "" : "disabled"}>Redo</button>
                 <button type="button" data-tb="save" class="primary">Save</button>
+                <button type="button" data-tb="print" title="Open the print dialog. Use 'Save as PDF' from there to export.">Print / PDF</button>
                 <button type="button" data-tb="duplicate">Duplicate</button>
                 <button type="button" data-tb="export">Export JSON</button>
                 <span class="dirty-pill" data-tb="dirty" ${this.dirty ? "" : "hidden"}>● Unsaved changes</span>
@@ -145,7 +146,24 @@ export class Editor {
     this.instance.updatedAt = Date.now();
     this.history.push(clone(this.instance.toJSON()));
     this._setDirty(true);
-    this.render();
+    if (!this._skipRender) this.render();
+  }
+
+  /**
+   * If an inline edit is currently active (contenteditable in progress),
+   * commit its current DOM value into state WITHOUT re-rendering. Used before
+   * actions that don't naturally move focus (drag start, undo/redo, save,
+   * toolbar buttons) so pending edits aren't clobbered.
+   */
+  _flushActiveEdit() {
+    const editing = this.chartMount.querySelector('[data-editing="true"]');
+    if (!editing) return;
+    this._skipRender = true;
+    try {
+      this._finishInlineEdit(editing);
+    } finally {
+      this._skipRender = false;
+    }
   }
 
   _setDirty(v) {
@@ -155,6 +173,7 @@ export class Editor {
   }
 
   undo() {
+    this._flushActiveEdit();
     const snap = this.history.undo();
     if (!snap) return;
     this.instance = ChartInstance.fromJSON(clone(snap));
@@ -163,6 +182,7 @@ export class Editor {
   }
 
   redo() {
+    this._flushActiveEdit();
     const snap = this.history.redo();
     if (!snap) return;
     this.instance = ChartInstance.fromJSON(clone(snap));
@@ -171,6 +191,7 @@ export class Editor {
   }
 
   async save() {
+    this._flushActiveEdit();
     await saveInstance(this.instance.toJSON());
     this._setDirty(false);
     this._renderToolbar();
@@ -180,12 +201,20 @@ export class Editor {
   _onToolbarClick(e) {
     const btn = e.target.closest("[data-tb]");
     if (!btn) return;
+    // The toolbar sits outside the chart mount, so a click here does not
+    // move focus out of an active in-chart inline edit. Flush it first.
+    this._flushActiveEdit();
     const action = btn.dataset.tb;
     if (action === "undo") this.undo();
     else if (action === "redo") this.redo();
     else if (action === "save") this.save();
     else if (action === "duplicate") this._duplicate();
     else if (action === "export") this._export();
+    else if (action === "print") this._print();
+  }
+
+  _print() {
+    window.print();
   }
 
   _onToolbarChange(e) {
@@ -313,7 +342,7 @@ export class Editor {
 
     if (cancelled || raw === original) {
       // no-op; still re-render to normalize
-      this.render();
+      if (!this._skipRender) this.render();
       return;
     }
 
@@ -337,7 +366,7 @@ export class Editor {
           }
         });
         this._commit("day-label");
-      } else this.render();
+      } else if (!this._skipRender) this.render();
       return;
     }
     if (kind === "time-label") {
@@ -350,7 +379,7 @@ export class Editor {
           if (c.time === oldLabel) c.time = raw;
         });
         this._commit("time-label");
-      } else this.render();
+      } else if (!this._skipRender) this.render();
       return;
     }
     if (kind === "chore-name") {
@@ -370,13 +399,13 @@ export class Editor {
         if (Number.isFinite(n) && n >= 0) {
           chore.points = n;
           this._commit("chore-points");
-        } else {
+        } else if (!this._skipRender) {
           this.render();
         }
       }
       return;
     }
-    this.render();
+    if (!this._skipRender) this.render();
   }
 
   _toggleDayCell(cell, shift) {
@@ -425,6 +454,9 @@ export class Editor {
   }
 
   _handleAction(action, btn) {
+    // Commit any in-progress inline edit first; action buttons may not steal
+    // focus from a contenteditable name/heading.
+    this._flushActiveEdit();
     switch (action) {
       case "add-chore": {
         const timeId = btn.dataset.timeId;
@@ -511,6 +543,9 @@ export class Editor {
   _onDragStart(e) {
     const handle = e.target.closest(".drag-handle");
     if (!handle) return;
+    // Commit any in-progress inline edit before we start dragging, since
+    // the drag handle is not focusable and won't otherwise trigger focusout.
+    this._flushActiveEdit();
     const row = handle.closest("[data-chore-id]");
     if (!row) return;
     this._dragChoreId = row.dataset.choreId;

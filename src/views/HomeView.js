@@ -56,6 +56,7 @@ export async function renderHome(_params, root) {
                 </div>
                 <div class="home-row-actions">
                     <button type="button" data-action="open"      data-id="${esc(inst.id)}">Open</button>
+                    <button type="button" data-action="print"     data-id="${esc(inst.id)}">Print</button>
                     <button type="button" data-action="rename"    data-id="${esc(inst.id)}">Rename</button>
                     <button type="button" data-action="duplicate" data-id="${esc(inst.id)}">Duplicate</button>
                     <button type="button" data-action="export"    data-id="${esc(inst.id)}">Export</button>
@@ -81,6 +82,10 @@ export async function renderHome(_params, root) {
     }
     if (action === "open") {
       navigate(`#/edit/${encodeURIComponent(id)}`);
+      return;
+    }
+    if (action === "print") {
+      navigate(`#/print/${encodeURIComponent(id)}`);
       return;
     }
 

@@ -356,3 +356,118 @@
     margin-left: 0.25rem;
   }
 }
+
+.print-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.5rem;
+  margin-bottom: 0.5rem;
+  background: #f5f5f5;
+  border: 1px solid #ddd;
+  border-radius: 0.375rem;
+
+  .primary {
+    background: #2b6cb0;
+    color: white;
+    border: none;
+    padding: 0.375rem 0.75rem;
+    border-radius: 0.25rem;
+    cursor: pointer;
+  }
+  .primary:hover {
+    background: #24548a;
+  }
+}
+
+/* ---------- Print / Save-as-PDF ---------- */
+@page {
+  size: landscape;
+  margin: 0.4in;
+}
+
+@media print {
+  /* Hide all editing chrome */
+  .editor-toolbar,
+  .editor-toolbar-mount,
+  .print-actions,
+  .app-header,
+  .link-back,
+  .dirty-pill,
+  .drag-handle,
+  .chore-remove-btn,
+  .day-hide-btn,
+  .time-remove-btn,
+  .add-chore-row,
+  .add-time-row,
+  .add-day-row,
+  .hidden-days,
+  .chore-time-select {
+    display: none !important;
+  }
+
+  /* Neutralize edit affordances */
+  .chart-content .editable,
+  .chart-content .cell-editable {
+    cursor: default !important;
+    outline: none !important;
+  }
+  [contenteditable="true"] {
+    outline: none !important;
+    background: transparent !important;
+  }
+
+  /* Tighten layout for a printable page */
+  html,
+  body,
+  #app,
+  .app-shell,
+  .editor-shell {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    color: black !important;
+  }
+  /*
+   * Keep a hair of internal padding on the chart container so the outermost
+   * cell borders don't clip when the user picks "No margins" in the print
+   * dialog (printers still have a small non-printable edge zone).
+   */
+  .chart-mount {
+    margin: 0 !important;
+    padding: 0.1in !important;
+    background: white !important;
+    color: black !important;
+    box-sizing: border-box;
+  }
+
+  .chart-header h1 {
+    margin: 0 0 0.25rem 0;
+    font-size: 1.5rem;
+  }
+
+  /*
+   * Let the grid flow across pages if it doesn't fit. `page-break-inside: avoid`
+   * here would push the whole grid to page 2 and leave the header alone on
+   * page 1. Instead, keep each row together and let sections break naturally.
+   */
+  .chart-content {
+    page-break-inside: auto;
+    grid-auto-rows: auto;
+  }
+  .chart-content > div {
+    padding: 0.25rem !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  .chart-content .full-row {
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+
+  /* Preserve the striped/blocked cells and time-of-day backgrounds when printing */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
